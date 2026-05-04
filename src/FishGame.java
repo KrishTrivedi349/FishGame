@@ -43,6 +43,7 @@ public class FishGame extends JFrame implements KeyListener {
     private final int poleEndY = HEIGHT - 20;
 
     private List<GameObject> objects = new ArrayList<>();
+    private GameObject caughtFish = null;
     private ArrayList<int[]> bubbles;
 
     private BufferedImage yodaImage, exploreImage, alphaImage;
@@ -61,7 +62,7 @@ public class FishGame extends JFrame implements KeyListener {
         for (int i = 0; i < 50; i++) {
             int x = (int) (Math.random() * WIDTH);
             int y = (int) (Math.random() * HEIGHT);
-            int size = 10 + (int) (Math.random() * 20); // random size (10–30)
+            int size = 10 + (int) (Math.random() * 20);
 
             bubbles.add(new int[]{x, y, size});
         }
@@ -70,7 +71,6 @@ public class FishGame extends JFrame implements KeyListener {
     private void moveBubbles() {
         for (int[] bubble : bubbles) {
             bubble[1] -= 1;
-
             if (bubble[1] < 0) {
                 bubble[1] = HEIGHT;
                 bubble[0] = (int) (Math.random() * WIDTH);
@@ -99,6 +99,7 @@ public class FishGame extends JFrame implements KeyListener {
         shieldActive = false;
         poleDeployed = false;
         poleY = poleStartY;
+        caughtFish = null;
         repaint();
     }
 
@@ -207,12 +208,10 @@ public class FishGame extends JFrame implements KeyListener {
         g.fillRect(0, DOCK_Y, WIDTH, HEIGHT - DOCK_Y);
 
         if (seaweedImage != null) {
-            // Drawing seaweed at the bottom (x=50, y=HEIGHT-70)
             g.drawImage(seaweedImage, 50, HEIGHT - 70, 40, 60, null);
             g.drawImage(seaweedImage, 400, HEIGHT - 80, 40, 70, null);
         }
         if (coralReefImage != null) {
-            // Drawing coral at the bottom (x=200, y=HEIGHT-60)
             g.drawImage(coralReefImage, 200, HEIGHT - 60, 60, 50, null);
         }
         drawBubbles(g);
@@ -235,14 +234,25 @@ public class FishGame extends JFrame implements KeyListener {
         g.setColor(Color.WHITE);
         g.fillOval(playerX + PLAYER_WIDTH / 2 - 3, poleY - 3, 6, 6);
 
+        if (caughtFish != null) {
+            if (caughtFish.type.equals("pufferfish")) {
+                g.setColor(Color.MAGENTA);
+            } else if (caughtFish.type.equals("powerup")) {
+                g.setColor(Color.GREEN);
+            } else {
+                g.setColor(Color.ORANGE);
+            }
+            g.fillOval(caughtFish.x, caughtFish.y, OBSTACLE_WIDTH, OBSTACLE_HEIGHT);
+        }
+
         g.setColor(Color.BLACK);
         for(GameObject object : objects){
             if(object.type.equals("pufferfish")){
-                g.setColor(Color.MAGENTA); // stands out
+                g.setColor(Color.MAGENTA);
             } else if(object.type.equals("powerup")){
                 g.setColor(Color.GREEN);
             } else {
-                g.setColor(Color.ORANGE); // normal fish
+                g.setColor(Color.ORANGE);
             }
 
             g.fillOval(object.x, object.y, OBSTACLE_WIDTH, OBSTACLE_HEIGHT);
@@ -260,7 +270,7 @@ public class FishGame extends JFrame implements KeyListener {
         g.fillRect(10,30,health,10);
 
         g.setColor(Color.BLACK);
-        g.fillRect(10,30,100,10);
+        g.drawRect(10,30,100,10);
 
         if(health > 60){
             g.setColor(Color.GREEN);
@@ -270,7 +280,6 @@ public class FishGame extends JFrame implements KeyListener {
             g.setColor(Color.RED);
         }
         g.fillRect(10,30,health,10);
-
 
         if (isShieldActive()) {
             g.setColor(new Color(0, 255, 255, 120));
@@ -299,6 +308,19 @@ public class FishGame extends JFrame implements KeyListener {
     }
 
     private void update() {
+        if (caughtFish != null) {
+            caughtFish.y = poleY - 20;
+            if (!poleDeployed && poleY <= poleStartY) {
+                if (caughtFish.type.equals("fish")) {
+                    score += 100;
+                } else if (caughtFish.type.equals("powerup")) {
+                    if (lives < 3) lives++;
+                    score += 50;
+                }
+                caughtFish = null;
+            }
+        }
+
         if(poleDeployed){
             if(poleY < poleEndY){
                 poleY += poleSpeed;
@@ -330,7 +352,6 @@ public class FishGame extends JFrame implements KeyListener {
                 isGameOver = true;
         }
 
-
         scoreLabel.setText("Score: " + score + " | Level: " + level);
         healthLabel.setText("Lives: " + lives + " | Health: " + health);
 
@@ -361,8 +382,6 @@ public class FishGame extends JFrame implements KeyListener {
             if(playerRect.intersects((objRect))){
                 if(object.type.equals("pufferfish")){
                     health -= 40;
-                    //playMeowSound();
-
                     if(health <= 0){
                         lives--;
                         if(lives > 0){
@@ -371,28 +390,45 @@ public class FishGame extends JFrame implements KeyListener {
                             isGameOver = true;
                         }
                     }
-                }
-
-                else if(object.type.equals("powerup")){
+                } else if(object.type.equals("powerup")){
                     if(lives < 3){
                         lives++;
                     }
                 }
-
                 objects.remove(i);
                 i--;
+                continue;
+            }
+
+            int poleCenterX = playerX + PLAYER_WIDTH / 2;
+            Rectangle poleHook = new Rectangle(poleCenterX - 3, poleY - 3, 6, 6);
+
+            if (poleHook.intersects(objRect) && caughtFish == null) {
+                if (object.type.equals("pufferfish")) {
+                    health -= 40;
+                    score -= 50;
+                    if (health <= 0) {
+                        lives--;
+                        if (lives > 0) health = 100;
+                        else isGameOver = true;
+                    }
+                    objects.remove(i);
+                    i--;
+                } else if (object.type.equals("fish") || object.type.equals("powerup")) {
+                    caughtFish = object;
+                    objects.remove(i);
+                    i--;
+                }
             }
         }
 
         for(int i = 0; i < objects.size(); i++){
             objects.get(i).y += OBSTACLE_SPEED;
-
             if(objects.get(i).y > HEIGHT){
                 objects.remove(i);
                 i--;
             }
         }
-
     }
 
     @Override
