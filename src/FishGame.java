@@ -18,33 +18,21 @@ public class FishGame extends JFrame implements KeyListener {
     private static final int OBSTACLE_WIDTH = 20;
     private static final int OBSTACLE_HEIGHT = 20;
     private static final int PLAYER_SPEED = 25;
-
-    private int currentObstacleSpeed = 3;
-    private double fishSpawnRate = 0.03;
-    private double puffSpawnRate = 0.005;
-    private int level = 1;
-    private Timer timer;
-    private int timeLeft = 60;
-    private static final int MAX_LEVEL = 5;
-    private boolean showLevelUp = false;
-    private long levelUpStartTime = 0;
-    private static final int LEVEL_UP_DISPLAY_MSG = 2000;
-
+    private static final int OBSTACLE_SPEED = 3;
 
     private int score = 0;
     private int health = 100;
     private int lives = 3;
-
-
+    private int level = 1;
+    private int timeLeft = 60;
 
     private JPanel gamePanel;
     private JLabel scoreLabel;
     private JLabel healthLabel;
     private JLabel timerLabel;
 
-
+    private Timer timer;
     private boolean isGameOver;
-
 
     private int playerX, playerY;
     private int poleY;
@@ -55,7 +43,7 @@ public class FishGame extends JFrame implements KeyListener {
     private final int poleEndY = HEIGHT - 20;
 
     private List<GameObject> objects = new ArrayList<>();
-    private List<Point> stars = new ArrayList<>();
+    private ArrayList<int[]> bubbles;
 
     private BufferedImage yodaImage, exploreImage, alphaImage;
     private BufferedImage currentCatImage;
@@ -68,28 +56,25 @@ public class FishGame extends JFrame implements KeyListener {
 
     private long lastSecondTick = System.currentTimeMillis();
 
-    private void applyLevelDifficulty(){
-        // Speed grows by 2 each level: 3, 5, 7, 9, 11
-        currentObstacleSpeed = 3 + (level - 1) * 2;
+    private void createBubbles() {
+        for (int i = 0; i < 50; i++) {
+            int x = (int) (Math.random() * WIDTH);
+            int y = (int) (Math.random() * HEIGHT);
+            int size = 10 + (int) (Math.random() * 20); // random size (10–30)
 
-        // Fish spawn rate grows by 0.015 each level: 0.03, 0.045, 0.06 …
-        fishSpawnRate = 0.03 + (level - 1) * 0.015;
-
-        // Pufferfish rate grows by 0.004 each level: 0.005, 0.009, 0.013 …
-        puffSpawnRate = 0.005 + (level - 1) * 0.004;
-
+            bubbles.add(new int[]{x, y, size});
+        }
     }
 
+    private void moveBubbles() {
+        for (int[] bubble : bubbles) {
+            bubble[1] -= 1;
 
-    private List<Point> generateStars(int numStars) {
-        List<Point> starsList = new ArrayList<>();
-        Random random = new Random();
-        for (int i = 0; i < numStars; i++) {
-            int x = random.nextInt(WIDTH);
-            int y = random.nextInt(HEIGHT);
-            starsList.add(new Point(x, y));
+            if (bubble[1] < 0) {
+                bubble[1] = HEIGHT;
+                bubble[0] = (int) (Math.random() * WIDTH);
+            }
         }
-        return starsList;
     }
 
     private void activateShield() {
@@ -109,15 +94,10 @@ public class FishGame extends JFrame implements KeyListener {
         score = 0;
         health = 100;
         lives = 3;
-        level = 1;
-        timeLeft = 60;
-        showLevelUp = false;
         isGameOver = false;
         shieldActive = false;
         poleDeployed = false;
         poleY = poleStartY;
-        objects.clear();
-        applyLevelDifficulty();
         repaint();
     }
 
@@ -195,7 +175,8 @@ public class FishGame extends JFrame implements KeyListener {
         isGameOver = false;
         objects = new ArrayList<>();
 
-        applyLevelDifficulty();
+        bubbles = new ArrayList<>();
+        createBubbles();
 
         timer = new Timer(20, e -> {
             if (!isGameOver) {
@@ -220,11 +201,7 @@ public class FishGame extends JFrame implements KeyListener {
 
         g.setColor(new Color(0, 100, 150));
         g.fillRect(0, DOCK_Y, WIDTH, HEIGHT - DOCK_Y);
-
-        g.setColor(Color.CYAN);
-        for (Point star : stars) {
-            g.fillOval(star.x, star.y, 2, 2);
-        }
+        drawBubbles(g);
 
         g.setColor(new Color(139,69,19));
         g.fillRect(0, DOCK_Y, WIDTH, 15);
@@ -286,17 +263,6 @@ public class FishGame extends JFrame implements KeyListener {
             g.fillOval(playerX - 5, playerY - 5, PLAYER_WIDTH + 10, PLAYER_HEIGHT + 10);
         }
 
-
-        if (showLevelUp) {
-            g.setColor(new Color(0, 0, 0, 160));
-            g.fillRoundRect(WIDTH / 2 - 110, HEIGHT / 2 - 40, 220, 70, 20, 20);
-            g.setColor(Color.YELLOW);
-            g.setFont(new Font("Arial", Font.BOLD, 28));
-            g.drawString("LEVEL UP!", WIDTH / 2 - 70, HEIGHT / 2 - 10);
-            g.setFont(new Font("Arial", Font.PLAIN, 16));
-            g.drawString("Level " + level + " — Good luck!", WIDTH / 2 - 72, HEIGHT / 2 + 20);
-        }
-
         if (isGameOver) {
             g.setColor(Color.WHITE);
             g.setFont(new Font("Arial", Font.BOLD, 24));
@@ -304,13 +270,21 @@ public class FishGame extends JFrame implements KeyListener {
         }
     }
 
-    private void update() {
+    private void drawBubbles(Graphics g) {
+        for (int[] bubble : bubbles) {
+            int x = bubble[0];
+            int y = bubble[1];
+            int size = bubble[2];
 
-        if (showLevelUp &&
-                System.currentTimeMillis() - levelUpStartTime > LEVEL_UP_DISPLAY_MSG) {
-            showLevelUp = false;
+            g.setColor(new Color(173, 216, 230, 150));
+            g.fillOval(x, y, size, size);
+
+            g.setColor(Color.WHITE);
+            g.drawOval(x, y, size, size);
         }
+    }
 
+    private void update() {
         if(poleDeployed){
             if(poleY < poleEndY){
                 poleY += poleSpeed;
@@ -322,6 +296,8 @@ public class FishGame extends JFrame implements KeyListener {
                 poleY -= poleSpeed;
             }
         }
+
+        moveBubbles();
 
         if(Math.random() < 0.01){
             int x = (int)(Math.random() * (WIDTH - 20));
@@ -336,30 +312,8 @@ public class FishGame extends JFrame implements KeyListener {
             timeLeft--;
             timerLabel.setText("Time: " + timeLeft);
             lastSecondTick = System.currentTimeMillis();
-            if (timeLeft <= 0) {
-                if (level < MAX_LEVEL) {
-                    // ── LEVEL PROGRESSION ──
-                    level++;
-                    timeLeft = 60;               // reset round timer
-                    objects.clear();             // clear the screen
-                    applyLevelDifficulty();      // faster fish, more spawns
-                    showLevelUp = true;       // show banner
-                    levelUpStartTime = System.currentTimeMillis();
-                } else {
-                    // Survived all levels → game over (victory)
-                    isGameOver = true;
-                }
-            }
-        }
-
-        if (Math.random() < fishSpawnRate) {
-            int x = (int) (Math.random() * (WIDTH - OBSTACLE_WIDTH));
-            objects.add(new GameObject(x, 0, "fish"));
-        }
-
-        if (Math.random() < puffSpawnRate) {
-            int x = (int) (Math.random() * (WIDTH - OBSTACLE_WIDTH));
-            objects.add(new GameObject(x, 0, "pufferfish"));
+            if (timeLeft <= 0)
+                isGameOver = true;
         }
 
 
@@ -367,7 +321,7 @@ public class FishGame extends JFrame implements KeyListener {
         healthLabel.setText("Lives: " + lives + " | Health: " + health);
 
         for (int i = 0; i < objects.size(); i++) {
-            objects.get(i).y += currentObstacleSpeed;
+            objects.get(i).y += OBSTACLE_SPEED;
             if (objects.get(i).y > HEIGHT) {
                 objects.remove(i);
                 i--;
@@ -384,38 +338,40 @@ public class FishGame extends JFrame implements KeyListener {
             objects.add(new GameObject(x,0,"pufferfish"));
         }
 
-        if (Math.random() < 0.1) {
-            stars = generateStars(200);
-        }
-
         Rectangle playerRect = new Rectangle(playerX, playerY, PLAYER_WIDTH, PLAYER_HEIGHT);
 
         for(int i = 0; i < objects.size(); i++){
             GameObject object = objects.get(i);
             Rectangle objRect = new Rectangle(object.x, object.y, 20,20);
-            //Krish
-            if (playerRect.intersects(objRect)) {
-                if (object.type.equals("pufferfish")) {
-                    if (!isShieldActive()) {
-                        health -= 40;
-                        if (health <= 0) {
-                            lives--;
-                            if (lives > 0) health = 100;
-                            else           isGameOver = true;
+
+            if(playerRect.intersects((objRect))){
+                if(object.type.equals("pufferfish")){
+                    health -= 40;
+                    //playMeowSound();
+
+                    if(health <= 0){
+                        lives--;
+                        if(lives > 0){
+                            health = 100;
+                        } else {
+                            isGameOver = true;
                         }
                     }
-                } else if (object.type.equals("powerup")) {
-                    if (lives < 3) lives++;
-                } else if (object.type.equals("fish")) {
-                    score += level * 10;
                 }
+
+                else if(object.type.equals("powerup")){
+                    if(lives < 3){
+                        lives++;
+                    }
+                }
+
                 objects.remove(i);
                 i--;
             }
         }
 
         for(int i = 0; i < objects.size(); i++){
-            objects.get(i).y += currentObstacleSpeed;
+            objects.get(i).y += OBSTACLE_SPEED;
 
             if(objects.get(i).y > HEIGHT){
                 objects.remove(i);
@@ -436,7 +392,7 @@ public class FishGame extends JFrame implements KeyListener {
             reset();
         } else if (keyCode == KeyEvent.VK_SHIFT) {
             activateShield();
-        } else if (keyCode == KeyEvent.VK_SPACE) {
+        } else if (keyCode == KeyEvent.VK_ENTER) {
             poleDeployed = !poleDeployed;
         }
     }
