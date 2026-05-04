@@ -291,23 +291,19 @@ public class FishGame extends JFrame implements KeyListener {
                 isGameOver = true;
         }
 
-        if (score >= 100)
-            level = 3;
-        else if (score >= 50)
-            level = 2;
 
         scoreLabel.setText("Score: " + score + " | Level: " + level);
         healthLabel.setText("Lives: " + lives + " | Health: " + health);
 
         for (int i = 0; i < objects.size(); i++) {
-            objects.get(i).y += OBSTACLE_SPEED + level;
+            objects.get(i).y += OBSTACLE_SPEED;
             if (objects.get(i).y > HEIGHT) {
                 objects.remove(i);
                 i--;
             }
         }
 
-        if (Math.random() < 0.03 + level * 0.01) {
+        if (Math.random() < 0.03) {
             int x = (int) (Math.random() * (WIDTH - OBSTACLE_WIDTH));
             objects.add(new GameObject(x, 0, "fish"));
         }
@@ -354,7 +350,7 @@ public class FishGame extends JFrame implements KeyListener {
         }
 
         for(int i = 0; i < objects.size(); i++){
-            objects.get(i).y += OBSTACLE_SPEED + level;
+            objects.get(i).y += OBSTACLE_SPEED;
 
             if(objects.get(i).y > HEIGHT){
                 objects.remove(i);
