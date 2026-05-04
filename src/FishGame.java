@@ -393,7 +393,7 @@ public class FishGame extends JFrame implements KeyListener {
         for(int i = 0; i < objects.size(); i++){
             GameObject object = objects.get(i);
             Rectangle objRect = new Rectangle(object.x, object.y, 20,20);
-
+            //Krish
             if (playerRect.intersects(objRect)) {
                 if (object.type.equals("pufferfish")) {
                     if (!isShieldActive()) {
