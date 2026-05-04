@@ -17,7 +17,7 @@ public class FishGame extends JFrame implements KeyListener {
     private static final int PLAYER_HEIGHT = 50;
     private static final int OBSTACLE_WIDTH = 20;
     private static final int OBSTACLE_HEIGHT = 20;
-    private static final int PLAYER_SPEED = 50;
+    private static final int PLAYER_SPEED = 25;
     private static final int OBSTACLE_SPEED = 3;
 
     private int score = 0;
