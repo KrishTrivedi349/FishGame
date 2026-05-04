@@ -47,6 +47,8 @@ public class FishGame extends JFrame implements KeyListener {
 
     private BufferedImage yodaImage, exploreImage, alphaImage;
     private BufferedImage currentCatImage;
+    private BufferedImage coralReefImage;
+    private BufferedImage seaweedImage;
 
     private boolean shieldActive = false;
     private long shieldStartTime;
@@ -117,6 +119,9 @@ public class FishGame extends JFrame implements KeyListener {
             yodaImage = ImageIO.read(new File("C:/Users/zi042/OneDrive/Pictures/yoda.png"));
             exploreImage = ImageIO.read(new File("C:/Users/zi042/OneDrive/Pictures/explore.png"));
             alphaImage = ImageIO.read(new File("C:/Users/zi042/OneDrive/Pictures/alpha.png"));
+            coralReefImage = ImageIO.read(new File("C:/Users/Jonah/Downloads/coralReef.gif"));
+            seaweedImage = ImageIO.read(getClass().getResource("/resources/seaweed.gif"));
+
         } catch (IOException ex) {
             ex.printStackTrace();
         }
@@ -199,8 +204,18 @@ public class FishGame extends JFrame implements KeyListener {
         g.setColor(new Color(135,206,235));
         g.fillRect(0, 0, WIDTH, DOCK_Y);
 
-        g.setColor(new Color(0, 100, 150));
-        g.fillRect(0, DOCK_Y, WIDTH, HEIGHT - DOCK_Y);
+        if (coralReefImage != null) {
+            g.drawImage(coralReefImage, 0, DOCK_Y, WIDTH, HEIGHT - DOCK_Y, null);
+        } else {
+            g.setColor(new Color(0, 100, 150)); // fallback water color
+            g.fillRect(0, DOCK_Y, WIDTH, HEIGHT - DOCK_Y);
+        }
+
+        if (seaweedImage != null) {
+            for (int i = 0; i < WIDTH; i += 120) {
+                g.drawImage(seaweedImage, i, HEIGHT - 120, 80, 120, null);
+            }
+        }
         drawBubbles(g);
 
         g.setColor(new Color(139,69,19));
