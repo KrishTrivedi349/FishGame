@@ -8,7 +8,7 @@ import java.util.List;
 import java.io.File;
 import java.io.IOException;
 import javax.imageio.ImageIO;
-
+import java.net.URL;
 public class FishGame extends JFrame implements KeyListener {
     private static final int WIDTH  = 500;
     private static final int HEIGHT = 500;
@@ -496,6 +496,7 @@ public class FishGame extends JFrame implements KeyListener {
             if (!poleDeployed && poleY <= poleStartY) {
                 if (isFishType(caughtFish.type)) {
                     score += scoreForType(caughtFish.type) * level;
+                    playSound("splash.wav");
                 } else if (caughtFish.type.equals("powerup")) {
                     if (lives < 3) lives++;
                     score += 50;
@@ -616,6 +617,7 @@ public class FishGame extends JFrame implements KeyListener {
 
                     if (!isShieldActive()) {
                         lives--;
+                        playSound("meow.wav");
                         health = 100;
                         if (lives <= 0) {
                             isGameOver = true;
@@ -627,6 +629,7 @@ public class FishGame extends JFrame implements KeyListener {
 
                     if (!isShieldActive()) {
                         health -= 20;
+                        playSound("meow.wav");
                         if (health <= 0) {
                             lives--;
                             if (lives > 0) {
@@ -667,6 +670,66 @@ public class FishGame extends JFrame implements KeyListener {
 
     @Override
     public void keyTyped(KeyEvent e){}
+    private void playSound(String filename) {
+        try {
+
+            URL soundUrl = getClass().getResource(filename);
+
+            if (soundUrl == null) {
+                System.out.println("⚠️ Sound file not found in classpath: " + filename);
+
+
+                File soundFile = new File(filename);
+                if (!soundFile.exists()) {
+                    System.out.println("⚠️ Sound file not found in file system: " + filename);
+                    return;
+                }
+                soundUrl = soundFile.toURI().toURL();
+            }
+
+
+            AudioInputStream originalStream = AudioSystem.getAudioInputStream(soundUrl);
+            AudioFormat baseFormat = originalStream.getFormat();
+
+
+            AudioFormat compatibleFormat = new AudioFormat(
+                    AudioFormat.Encoding.PCM_SIGNED,
+                    baseFormat.getSampleRate(),
+                    16,
+                    baseFormat.getChannels(),
+                    baseFormat.getChannels() * 2,
+                    baseFormat.getSampleRate(),
+                    false
+            );
+
+            AudioInputStream convertedStream = AudioSystem.getAudioInputStream(compatibleFormat, originalStream);
+
+
+            Clip clip = AudioSystem.getClip();
+            clip.open(convertedStream);
+            clip.setFramePosition(0);
+            clip.start();
+
+
+            clip.addLineListener(event -> {
+                if (event.getType() == LineEvent.Type.STOP) {
+                    clip.close();
+                    try {
+                        originalStream.close();
+                        convertedStream.close();
+                    } catch (IOException ex) {
+                        ex.printStackTrace();
+                    }
+                }
+            });
+
+            System.out.println("🔊 Playing sound: " + filename);
+
+        } catch (Exception e) {
+            System.out.println("❌ Failed to play sound: " + filename);
+            e.printStackTrace();
+        }
+    }
 
     @Override
     public void keyReleased(KeyEvent e) {}
