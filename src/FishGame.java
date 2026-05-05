@@ -62,6 +62,7 @@ public class FishGame extends JFrame implements KeyListener {
     private BufferedImage rockImage;
     private BufferedImage sodacanImage;
     private BufferedImage sharkImage, troutImage, goldfishImage, jellyfishImage, catfishImage, starfishImage, pufferfishImage;
+    private BufferedImage powerupImage;
 
     private boolean shieldActive = false;
     private long shieldStartTime;
@@ -174,21 +175,21 @@ public class FishGame extends JFrame implements KeyListener {
     private int sizeForType(String t) {
         switch (t) {
             case "shark":
-                return 32;
+                return 48;
             case "jellyfish":
-                return 26;
+                return 32;
             case "trout":
-                return 24;
+                return 28;
             case "pufferfish":
-                return 24;
+                return 28;
             case "catfish":
-                return 22;
+                return 24;
             case "starfish":
-                return 22;
+                return 24;
             case "goldfish":
-                return 18;
+                return 20;
             case "rock":
-                return 26;
+                return 32;
             case "trash":
                 return 20;
             default:
@@ -249,6 +250,8 @@ public class FishGame extends JFrame implements KeyListener {
             catfishImage = ImageIO.read(getClass().getResource("/catfish.png"));
             starfishImage = ImageIO.read(getClass().getResource("/starfish.png"));
             pufferfishImage = ImageIO.read(getClass().getResource("/pufferfish.png"));
+
+            powerupImage = ImageIO.read(getClass().getResource("/powerup.png"));
 
         } catch (IOException e) {
             e.printStackTrace();
@@ -478,8 +481,8 @@ public class FishGame extends JFrame implements KeyListener {
                 break;
 
             case "powerup":
-                g.setColor(Color.GREEN);
-                g.fillOval(x, y, s, s);
+                if(powerupImage != null)
+                    g.drawImage(powerupImage, x, y, s, s, null);
                 break;
         }
     }
@@ -598,7 +601,7 @@ public class FishGame extends JFrame implements KeyListener {
             int y = DOCK_Y + (int)(Math.random() * (HEIGHT - DOCK_Y - 50));
             int dx = fromLeft ? 2 : -2; // slower so it's easier to catch
 
-            objects.add(new GameObject(x, y, "powerup", 20, dx));
+            objects.add(new GameObject(x, y, "powerup", 50, dx));
         }
 
 
