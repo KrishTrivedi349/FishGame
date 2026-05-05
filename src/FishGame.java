@@ -1,50 +1,60 @@
 import javax.swing.*;
+import javax.sound.sampled.*;
 import java.awt.*;
 import java.awt.event.*;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
 import java.io.File;
 import java.io.IOException;
 import javax.imageio.ImageIO;
 
 public class FishGame extends JFrame implements KeyListener {
-    private static final int WIDTH = 500;
+    private static final int WIDTH  = 500;
     private static final int HEIGHT = 500;
     private static final int DOCK_Y = 85;
-    private static final int PLAYER_WIDTH = 50;
+    private static final int PLAYER_WIDTH  = 50;
     private static final int PLAYER_HEIGHT = 50;
-    private static final int OBSTACLE_WIDTH = 20;
-    private static final int OBSTACLE_HEIGHT = 20;
-    private static final int PLAYER_SPEED = 25;
-    private static final int OBSTACLE_SPEED = 3;
+    private static final int PLAYER_SPEED  = 25;
+
+    private static final String[] FISH_TYPES = {"shark","trout","goldfish","jellyfish","catfish","starfish"};
+    private static final String[] OBSTACLE_TYPES = {"rock","trash"};
+
+    private int currentObstacleSpeed = 3;
+    private double fishSpawnRate = 0.03;
+    private double puffSpawnRate = 0.005;
+    private double obstacleSpawnRate = 0.008;
+    private static final int MAX_LEVEL = 3;
+    private static final int DISPLAY_MSG = 2000;
+
 
     private int score = 0;
     private int health = 100;
     private int lives = 3;
     private int level = 1;
     private int timeLeft = 60;
+    private boolean isGameOver = false;
+    private boolean isVictory = false;
+    private boolean showLevelUp = false;
+    private long levelUpStartTime = 0;
 
     private JPanel gamePanel;
     private JLabel scoreLabel;
     private JLabel healthLabel;
     private JLabel timerLabel;
-
-    private Timer timer;
-    private boolean isGameOver;
+    private Timer  swingTimer;
 
     private int playerX, playerY;
     private int poleY;
     private int poleSpeed;
-    private boolean poleDeployed;
-
+    private boolean poleDeployed = false;
     private final int poleStartY = 90;
     private final int poleEndY = HEIGHT - 20;
 
     private List<GameObject> objects = new ArrayList<>();
     private GameObject caughtFish = null;
-    private ArrayList<int[]> bubbles;
+
+    private ArrayList<int[]> bubbles = new ArrayList<>();
 
     private BufferedImage yodaImage, exploreImage, alphaImage;
     private BufferedImage currentCatImage;
@@ -58,26 +68,43 @@ public class FishGame extends JFrame implements KeyListener {
 
     private long lastSecondTick = System.currentTimeMillis();
 
+    public class GameObject {
+        int x, y, size;
+        String type;
+        GameObject(int x, int y, String type, int size) {
+            this.x = x;
+            this.y = y;
+            this.type = type;
+            this.size = size;
+        }
+    }
+
+    private void applyLevelDifficulty() {
+        currentObstacleSpeed = 3  + (level - 1) * 2;
+        fishSpawnRate = 0.03  + (level - 1) * 0.015;
+        puffSpawnRate = 0.005 + (level - 1) * 0.004;
+        obstacleSpawnRate = 0.008 + (level - 1) * 0.003;
+    }
+
     private void createBubbles() {
         for (int i = 0; i < 50; i++) {
-            int x = (int) (Math.random() * WIDTH);
-            int y = DOCK_Y + (int) (Math.random() * (HEIGHT - DOCK_Y));
-            int size = 10 + (int) (Math.random() * 20);
-
+            int x = (int)(Math.random() * WIDTH);
+            int y = DOCK_Y + (int)(Math.random() * (HEIGHT - DOCK_Y));
+            int size = 5 + (int)(Math.random() * 15);
             bubbles.add(new int[]{x, y, size});
         }
     }
 
     private void moveBubbles() {
-        for (int[] bubble : bubbles) {
-            bubble[1] -= 1;
-
-            if (bubble[1] < DOCK_Y) {
-                bubble[1] = HEIGHT;
-                bubble[0] = (int) (Math.random() * WIDTH);
+        for (int[] b : bubbles) {
+            b[1] -= 1;
+            if (b[1] < DOCK_Y) {
+                b[1] = HEIGHT;
+                b[0] = (int)(Math.random() * WIDTH);
             }
         }
     }
+
 
     private void activateShield() {
         long now = System.currentTimeMillis();
@@ -92,60 +119,120 @@ public class FishGame extends JFrame implements KeyListener {
         return shieldActive && (System.currentTimeMillis() - shieldStartTime) < SHIELD_DURATION;
     }
 
+
     private void reset() {
         score = 0;
         health = 100;
         lives = 3;
+        level = 1;
+        timeLeft = 60;
+        showLevelUp  = false;
         isGameOver = false;
+        isVictory = false;
         shieldActive = false;
         poleDeployed = false;
         poleY = poleStartY;
         caughtFish = null;
+        objects.clear();
+        chooseCat();
         repaint();
     }
 
-    class GameObject{
-        int x, y;
-        String type;
 
-        public GameObject(int x,int y, String type){
-            this.x = x;
-            this.y = y;
-            this.type = type;
+    private boolean isFishType(String t){
+        for (String f : FISH_TYPES) {
+            if (f.equals(t)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean isObstacleType(String t) {
+        for (String o : OBSTACLE_TYPES) {
+            if (o.equals(t)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private String randomFishType(){
+        return FISH_TYPES[(int)(Math.random() * FISH_TYPES.length)];
+    }
+
+    private String randomObstacleType() {
+        return OBSTACLE_TYPES[(int)(Math.random() * OBSTACLE_TYPES.length)];
+    }
+
+    private int sizeForType(String t) {
+        switch (t) {
+            case "shark":
+                return 32;
+            case "jellyfish":
+                return 26;
+            case "trout":
+                return 24;
+            case "pufferfish":
+                return 24;
+            case "catfish":
+                return 22;
+            case "starfish":
+                return 22;
+            case "goldfish":
+                return 18;
+            case "rock":
+                return 26;
+            case "trash":
+                return 20;
+            default:
+                return 20;
         }
     }
+
+    private int scoreForType(String t) {
+        switch (t) {
+            case "goldfish":
+                return 10;
+            case "trout":
+                return 15;
+            case "catfish":
+                return 20;
+            case "starfish":
+                return 25;
+            case "jellyfish":
+                return 30;
+            case "shark":
+                return 50;
+            default:
+                return 10;
+        }
+    }
+
+
 
     public FishGame() {
         try {
             yodaImage = ImageIO.read(new File("src/yoda.png"));
-            exploreImage = ImageIO.read(new File("src/explore.png"));
+        } catch (IOException ignored) {}
+
+        try {
+            exploreImage   = ImageIO.read(new File("src/explore.png"));
+        } catch (IOException ignored) {}
+
+        try {
             alphaImage = ImageIO.read(new File("src/alpha.png"));
-            coralReefImage = ImageIO.read(new File("/coral.png"));
-            seaweedImage = ImageIO.read(new File("/seaweed.png"));
+        } catch (IOException ignored) {}
 
-            System.out.println("Coral: " + coralReefImage);
-            System.out.println("Seaweed: " + seaweedImage);
+        try {
+            coralReefImage = ImageIO.read(new File("src/coral.png"));
+        } catch (IOException ignored) {}
 
-        } catch (IOException ex) {
-            ex.printStackTrace();
-        }
+        try {
+            seaweedImage   = ImageIO.read(new File("src/seaweed.png"));
+        } catch (IOException ignored) {}
 
-        String[] options = {"Yoda", "Explore", "Alpha"};
-        int choice = JOptionPane.showOptionDialog(
-                null, "Choose your cat:", "Cat Selection",
-                JOptionPane.DEFAULT_OPTION, JOptionPane.QUESTION_MESSAGE,
-                null, options, options[0]);
-
-        if (choice == 0) {
-            currentCatImage = yodaImage;
-            poleSpeed = 3;
-        } else if (choice == 1) {
-            currentCatImage = exploreImage;
-            poleSpeed = 6;
-        } else {
-            currentCatImage = alphaImage;
-            poleSpeed = 9;
-        }
+        chooseCat();
 
         setTitle("Underwater Cat Fishing");
         setSize(WIDTH, HEIGHT);
@@ -153,23 +240,19 @@ public class FishGame extends JFrame implements KeyListener {
         setResizable(false);
 
         gamePanel = new JPanel() {
-            @Override
-            protected void paintComponent(Graphics g) {
-                super.paintComponent(g);
-                draw(g);
+            @Override protected void paintComponent(Graphics g) {
+                super.paintComponent(g); draw(g);
             }
         };
 
         scoreLabel = new JLabel("Score: 0 | Level: 1");
         scoreLabel.setForeground(Color.BLUE);
-        gamePanel.add(scoreLabel);
-
         healthLabel = new JLabel("Lives: 3 | Health: 100");
         healthLabel.setForeground(Color.RED);
-        gamePanel.add(healthLabel);
-
         timerLabel = new JLabel("Time: 60");
         timerLabel.setForeground(Color.YELLOW);
+        gamePanel.add(scoreLabel);
+        gamePanel.add(healthLabel);
         gamePanel.add(timerLabel);
 
         add(gamePanel);
@@ -179,49 +262,48 @@ public class FishGame extends JFrame implements KeyListener {
         playerX = WIDTH / 2 - PLAYER_WIDTH / 2;
         playerY = 40;
         poleY = poleStartY;
-        poleDeployed = false;
 
-        isGameOver = false;
-        objects = new ArrayList<>();
-
-        bubbles = new ArrayList<>();
         createBubbles();
+        applyLevelDifficulty();
 
-        timer = new Timer(20, e -> {
+        swingTimer = new Timer(20, e -> {
             if (!isGameOver) {
                 update();
                 repaint();
             }
         });
-        timer.start();
+        swingTimer.start();
     }
 
-    public static Color generateRandomColor() {
-        Random rand = new Random();
-        int r = rand.nextInt(256);
-        int g = rand.nextInt(256);
-        int b = rand.nextInt(256);
-        return new Color(r, g, b);
-    }
+    private void chooseCat(){
+        String[] options = {"Yoda", "Explore", "Alpha"};
+        int choice = JOptionPane.showOptionDialog(null, "Choose your cat:", "Cat Selection",
+                JOptionPane.DEFAULT_OPTION, JOptionPane.QUESTION_MESSAGE, null, options, options[0]);
 
+        if (choice == 0){
+            currentCatImage = yodaImage;
+            poleSpeed = 3;
+        } else if (choice == 1) {
+            currentCatImage = exploreImage;
+            poleSpeed = 6;
+        } else{
+            currentCatImage = alphaImage;
+            poleSpeed = 9;
+        }
+    }
     private void draw(Graphics g) {
-        g.setColor(new Color(135,206,235));
+
+        g.setColor(new Color(135, 206, 235));
         g.fillRect(0, 0, WIDTH, DOCK_Y);
 
         g.setColor(new Color(0, 100, 150));
         g.fillRect(0, DOCK_Y, WIDTH, HEIGHT - DOCK_Y);
 
+        drawUnderwaterDecorations(g);
+
         drawBubbles(g);
 
-        if (seaweedImage != null) {
-            g.drawImage(seaweedImage, 50, HEIGHT - 120, 40, 60, null);
-            g.drawImage(seaweedImage, 400, HEIGHT - 130, 40, 70, null);
-        }
-        if (coralReefImage != null) {
-            g.drawImage(coralReefImage, 200, HEIGHT - 110, 60, 50, null);
-        }
-
-        g.setColor(new Color(139,69,19));
+        g.setColor(new Color(139, 69, 19));
         g.fillRect(0, DOCK_Y, WIDTH, 15);
 
         if (currentCatImage != null) {
@@ -239,85 +321,158 @@ public class FishGame extends JFrame implements KeyListener {
         g.setColor(Color.WHITE);
         g.fillOval(playerX + PLAYER_WIDTH / 2 - 3, poleY - 3, 6, 6);
 
-        if (caughtFish != null) {
-            if (caughtFish.type.equals("pufferfish")) {
-                g.setColor(Color.MAGENTA);
-            } else if (caughtFish.type.equals("powerup")) {
-                g.setColor(Color.GREEN);
-            } else {
-                g.setColor(Color.ORANGE);
-            }
-            g.fillOval(caughtFish.x, caughtFish.y, OBSTACLE_WIDTH, OBSTACLE_HEIGHT);
+
+        for (GameObject obj : objects) drawObject(g, obj);
+        if (caughtFish != null) drawObject(g, caughtFish);
+
+
+        g.setColor(Color.GRAY);
+        g.fillRect(10, 30, 100, 10);
+        if (health > 60){
+            g.setColor(Color.GREEN);
+        } else if (health > 30) {
+            g.setColor(Color.YELLOW);
+
+        } else {
+            g.setColor(Color.RED);
         }
 
+        g.fillRect(10, 30, health, 10);
         g.setColor(Color.BLACK);
-        for(GameObject object : objects){
-            if(object.type.equals("pufferfish")){
-                g.setColor(Color.MAGENTA);
-            } else if(object.type.equals("powerup")){
-                g.setColor(Color.GREEN);
-            } else {
-                g.setColor(Color.ORANGE);
-            }
+        g.drawRect(10, 30, 100, 10);
 
-            g.fillOval(object.x, object.y, OBSTACLE_WIDTH, OBSTACLE_HEIGHT);
-        }
 
         for(int i = 0; i < lives; i++){
             g.setColor(Color.PINK);
             g.fillOval(10 + (i * 30),50,15,15);
         }
 
-        g.setColor(Color.GRAY);
-        g.fillRect(10,30,100,10);
-
-        g.setColor(Color.GREEN);
-        g.fillRect(10,30,health,10);
-
-        g.setColor(Color.BLACK);
-        g.drawRect(10,30,100,10);
-
-        if(health > 60){
-            g.setColor(Color.GREEN);
-        }else if(health > 30){
-            g.setColor(Color.YELLOW);
-        }else{
-            g.setColor(Color.RED);
-        }
-        g.fillRect(10,30,health,10);
-
         if (isShieldActive()) {
             g.setColor(new Color(0, 255, 255, 120));
             g.fillOval(playerX - 5, playerY - 5, PLAYER_WIDTH + 10, PLAYER_HEIGHT + 10);
         }
 
+
+        if (showLevelUp) {
+            g.setColor(new Color(0, 0, 0, 160));
+            g.fillRoundRect(WIDTH/2 - 110, HEIGHT/2 - 40, 220, 70, 20, 20);
+            g.setColor(Color.YELLOW);
+            g.setFont(new Font("Arial", Font.BOLD, 28));
+            g.drawString("LEVEL UP!", WIDTH/2 - 70, HEIGHT/2 - 10);
+            g.setFont(new Font("Arial", Font.PLAIN, 16));
+            g.drawString("Level " + level + " - Good luck!", WIDTH/2 - 72, HEIGHT/2 + 20);
+        }
+
         if (isGameOver) {
+            g.setColor(new Color(0, 0, 0, 190));
+            g.fillRect(0, 0, WIDTH, HEIGHT);
+            g.setFont(new Font("Arial", Font.BOLD, 38));
+            g.setColor(isVictory ? Color.YELLOW : Color.RED);
+            g.drawString(isVictory ? "You Win!" : "Game Over!", WIDTH/2 - 95, HEIGHT/2 - 30);
+            g.setFont(new Font("Arial", Font.PLAIN, 20));
             g.setColor(Color.WHITE);
-            g.setFont(new Font("Arial", Font.BOLD, 24));
-            g.drawString("Game Over!", WIDTH / 2 - 80, HEIGHT / 2);
+            g.drawString("Final Score: " + score, WIDTH/2 - 70, HEIGHT/2 + 10);
+            g.drawString("Press ESC to restart",  WIDTH/2 - 95, HEIGHT/2 + 45);
         }
     }
+
+
+    private void drawUnderwaterDecorations(Graphics g) {
+
+        if (seaweedImage != null) {
+            g.drawImage(seaweedImage,45,HEIGHT - 115,35,90,null);
+            g.drawImage(seaweedImage,82,HEIGHT - 95,28,70,null);
+            g.drawImage(seaweedImage,390,HEIGHT - 120,35,95,null);
+            g.drawImage(seaweedImage,425,HEIGHT - 100,28,75,null);
+        }
+
+        if (coralReefImage != null) {
+            g.drawImage(coralReefImage, 195, HEIGHT - 85, 80, 65, null);
+        }
+
+
+    }
+
 
     private void drawBubbles(Graphics g) {
-        for (int[] bubble : bubbles) {
-            int x = bubble[0];
-            int y = bubble[1];
-            int size = bubble[2];
-
-            g.setColor(new Color(173, 216, 230, 150));
-            g.fillOval(x, y, size, size);
-
-            g.setColor(Color.WHITE);
-            g.drawOval(x, y, size, size);
+        for (int[] b : bubbles) {
+            g.setColor(new Color(173, 216, 230, 140));
+            g.fillOval(b[0], b[1], b[2], b[2]);
+            g.setColor(new Color(255, 255, 255, 160));
+            g.drawOval(b[0], b[1], b[2], b[2]);
         }
     }
 
+    private void drawObject(Graphics g, GameObject obj) {
+        int x = obj.x, y = obj.y, s = obj.size;
+        switch (obj.type) {
+
+            case "shark":
+                g.setColor(new Color(110, 110, 130));
+                g.fillOval(x, y + s/4, s, s/2);
+                break;
+
+            case "trout":
+                g.setColor(new Color(70, 130, 200));
+                g.fillOval(x, y, s, s*2/3);
+                break;
+
+            case "goldfish":
+                g.setColor(new Color(255, 160, 0));
+                g.fillOval(x, y, s, s);
+                break;
+
+            case "jellyfish":
+                g.setColor(new Color(220, 100, 220, 180));
+                g.fillArc(x, y, s, s, 0, 180);
+                break;
+
+            case "catfish":
+                g.setColor(new Color(120, 80, 40));
+                g.fillOval(x, y, s, s*2/3);
+                break;
+
+            case "starfish":
+                g.setColor(new Color(255, 80, 60));
+                g.fillOval(x, y, s, s);
+                break;
+
+            case "pufferfish":
+                g.setColor(Color.MAGENTA);
+                g.fillOval(x, y, s, s);
+                break;
+
+            case "rock":
+                g.setColor(new Color(100, 100, 100));
+                g.fillOval(x, y+s/4, s, s*3/4);
+                break;
+
+            case "trash":
+                g.setColor(new Color(160, 160, 90));
+                g.fillRect(x+2, y+s/5, s-4, s*4/5);
+
+                break;
+
+            case "powerup":
+                g.setColor(new Color(50, 220, 50));
+                g.fillOval(x, y, s, s);
+                break;
+        }
+    }
+
+
     private void update() {
+
+        if (showLevelUp && System.currentTimeMillis() - levelUpStartTime > DISPLAY_MSG) {
+            showLevelUp = false;
+        }
+
         if (caughtFish != null) {
-            caughtFish.y = poleY - 20;
+            caughtFish.x = playerX + PLAYER_WIDTH/2 - caughtFish.size/2;
+            caughtFish.y = poleY - caughtFish.size/2;
             if (!poleDeployed && poleY <= poleStartY) {
-                if (caughtFish.type.equals("fish")) {
-                    score += 100;
+                if (isFishType(caughtFish.type)) {
+                    score += scoreForType(caughtFish.type) * level;
                 } else if (caughtFish.type.equals("powerup")) {
                     if (lives < 3) lives++;
                     score += 50;
@@ -326,115 +481,125 @@ public class FishGame extends JFrame implements KeyListener {
             }
         }
 
-        if(poleDeployed){
-            if(poleY < poleEndY){
+        if (poleDeployed) {
+            if (poleY < poleEndY){
                 poleY += poleSpeed;
             }
-        }
-
-        if (!poleDeployed) {
-            if(poleY > poleStartY){
+        } else {
+            if (poleY > poleStartY) {
                 poleY -= poleSpeed;
             }
         }
 
         moveBubbles();
 
-        if(Math.random() < 0.01){
-            int x = (int)(Math.random() * (WIDTH - 20));
-            objects.add(new GameObject(x,0,"powerup"));
-        }
 
         if (shieldActive && System.currentTimeMillis() - shieldStartTime > SHIELD_DURATION) {
             shieldActive = false;
         }
 
+
         if (System.currentTimeMillis() - lastSecondTick >= 1000) {
             timeLeft--;
             timerLabel.setText("Time: " + timeLeft);
             lastSecondTick = System.currentTimeMillis();
-            if (timeLeft <= 0)
-                isGameOver = true;
+            if (timeLeft <= 0) {
+                if (level < MAX_LEVEL) {
+                    level++;
+                    timeLeft = 60;
+                    objects.clear();
+                    caughtFish = null;
+                    applyLevelDifficulty();
+                    showLevelUp      = true;
+                    levelUpStartTime = System.currentTimeMillis();
+                } else {
+                    isVictory = true;
+                    isGameOver = true;
+                }
+            }
         }
 
         scoreLabel.setText("Score: " + score + " | Level: " + level);
         healthLabel.setText("Lives: " + lives + " | Health: " + health);
 
+
         for (int i = 0; i < objects.size(); i++) {
-            objects.get(i).y += OBSTACLE_SPEED;
-            if (objects.get(i).y > HEIGHT) {
-                objects.remove(i);
-                i--;
+            objects.get(i).y -= currentObstacleSpeed;
+            if (objects.get(i).y + objects.get(i).size < DOCK_Y + 50) {
+                objects.remove(i--);
             }
         }
 
-        if (Math.random() < 0.03) {
-            int x = (int) (Math.random() * (WIDTH - OBSTACLE_WIDTH));
-            objects.add(new GameObject(x, 0, "fish"));
+
+        if (Math.random() < fishSpawnRate) {
+            String t = randomFishType();
+            objects.add(new GameObject((int)(Math.random()*(WIDTH-40)), HEIGHT, t, sizeForType(t)));
         }
 
-        if(Math.random() < 0.005){
-            int x = (int)(Math.random() * (WIDTH - OBSTACLE_WIDTH));
-            objects.add(new GameObject(x,0,"pufferfish"));
+
+        if (Math.random() < puffSpawnRate) {
+            objects.add(new GameObject((int)(Math.random()*(WIDTH-40)), HEIGHT, "pufferfish", sizeForType("pufferfish")));
         }
 
-        Rectangle playerRect = new Rectangle(playerX, playerY, PLAYER_WIDTH, PLAYER_HEIGHT);
 
-        for(int i = 0; i < objects.size(); i++){
-            GameObject object = objects.get(i);
-            Rectangle objRect = new Rectangle(object.x, object.y, 20,20);
+        if (Math.random() < obstacleSpawnRate) {
+            String t = randomObstacleType();
+            objects.add(new GameObject((int)(Math.random()*(WIDTH-40)), HEIGHT, t, sizeForType(t)));
+        }
 
-            if(playerRect.intersects((objRect))){
-                if(object.type.equals("pufferfish")){
-                    health -= 40;
-                    if(health <= 0){
+
+        if (Math.random() < 0.005) {
+            objects.add(new GameObject((int)(Math.random()*(WIDTH-30)), HEIGHT, "powerup", 20));
+        }
+
+
+        if (caughtFish == null) {
+            int hookCX = playerX + PLAYER_WIDTH/2;
+            Rectangle hook = new Rectangle(hookCX - 6, poleY - 6, 12, 12);
+
+            for (int i = 0; i < objects.size(); i++) {
+                GameObject obj  = objects.get(i);
+                Rectangle  rect = new Rectangle(obj.x, obj.y, obj.size, obj.size);
+                if (!hook.intersects(rect)) {
+                    continue;
+                }
+
+                if (obj.type.equals("pufferfish")) {
+
+                    if (!isShieldActive()) {
                         lives--;
-                        if(lives > 0){
-                            health = 100;
-                        } else {
+                        health = 100;
+                        if (lives <= 0) {
                             isGameOver = true;
                         }
                     }
-                } else if(object.type.equals("powerup")){
-                    if(lives < 3){
-                        lives++;
+                    objects.remove(i--);
+
+                } else if (isObstacleType(obj.type)) {
+
+                    if (!isShieldActive()) {
+                        health -= 20;
+                        if (health <= 0) {
+                            lives--;
+                            if (lives > 0) {
+                                health = 100;
+                            } else {
+                                isGameOver = true;
+                            }
+                        }
                     }
+                    objects.remove(i--);
+
+                } else {
+                    caughtFish = obj;
+                    poleDeployed = false;
+                    objects.remove(i--);
                 }
-                objects.remove(i);
-                i--;
-                continue;
-            }
-
-            int poleCenterX = playerX + PLAYER_WIDTH / 2;
-            Rectangle poleHook = new Rectangle(poleCenterX - 3, poleY - 3, 6, 6);
-
-            if (poleHook.intersects(objRect) && caughtFish == null) {
-                if (object.type.equals("pufferfish")) {
-                    health -= 40;
-                    score -= 50;
-                    if (health <= 0) {
-                        lives--;
-                        if (lives > 0) health = 100;
-                        else isGameOver = true;
-                    }
-                    objects.remove(i);
-                    i--;
-                } else if (object.type.equals("fish") || object.type.equals("powerup")) {
-                    caughtFish = object;
-                    objects.remove(i);
-                    i--;
-                }
-            }
-        }
-
-        for(int i = 0; i < objects.size(); i++){
-            objects.get(i).y += OBSTACLE_SPEED;
-            if(objects.get(i).y > HEIGHT){
-                objects.remove(i);
-                i--;
+                break;
             }
         }
     }
+
 
     @Override
     public void keyPressed(KeyEvent e) {
@@ -447,16 +612,17 @@ public class FishGame extends JFrame implements KeyListener {
             reset();
         } else if (keyCode == KeyEvent.VK_SHIFT) {
             activateShield();
-        } else if (keyCode == KeyEvent.VK_ENTER) {
+        } else if (keyCode == KeyEvent.VK_SPACE) {
             poleDeployed = !poleDeployed;
         }
     }
 
     @Override
-    public void keyTyped(KeyEvent e) {}
+    public void keyTyped(KeyEvent e){}
 
     @Override
     public void keyReleased(KeyEvent e) {}
+
 
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> new FishGame().setVisible(true));
