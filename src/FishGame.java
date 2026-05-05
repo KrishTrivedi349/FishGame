@@ -722,12 +722,7 @@ public class FishGame extends JFrame implements KeyListener {
                     }
                 }
             });
-
-            System.out.println("🔊 Playing sound: " + filename);
-
         } catch (Exception e) {
-            System.out.println("❌ Failed to play sound: " + filename);
-            e.printStackTrace();
         }
     }
 
