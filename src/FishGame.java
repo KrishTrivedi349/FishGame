@@ -59,6 +59,9 @@ public class FishGame extends JFrame implements KeyListener {
     private BufferedImage yodaImage, exploreImage, alphaImage;
     private BufferedImage currentCatImage;
     private BufferedImage coralReefImage, seaweedImage;
+    private BufferedImage rockImage;
+    private BufferedImage sodacanImage;
+    private BufferedImage sharkImage, troutImage, goldfishImage, jellyfishImage, catfishImage, starfishImage, pufferfishImage;
 
     private boolean shieldActive = false;
     private long shieldStartTime;
@@ -70,12 +73,15 @@ public class FishGame extends JFrame implements KeyListener {
 
     public class GameObject {
         int x, y, size;
+        int dx;
         String type;
-        GameObject(int x, int y, String type, int size) {
+
+        GameObject(int x, int y, String type, int size, int dx) {
             this.x = x;
             this.y = y;
             this.type = type;
             this.size = size;
+            this.dx = dx;
         }
     }
 
@@ -231,6 +237,22 @@ public class FishGame extends JFrame implements KeyListener {
         try {
             seaweedImage   = ImageIO.read(new File("src/seaweed.png"));
         } catch (IOException ignored) {}
+
+        try {
+            rockImage = ImageIO.read(getClass().getResource("/rock.png"));
+            sodacanImage = ImageIO.read(getClass().getResource("/sodacan copy.png"));
+
+            sharkImage = ImageIO.read(getClass().getResource("/shark.png"));
+            troutImage = ImageIO.read(getClass().getResource("/trout.png"));
+            goldfishImage = ImageIO.read(getClass().getResource("/goldfish.png"));
+            jellyfishImage = ImageIO.read(getClass().getResource("/jellyfish.png"));
+            catfishImage = ImageIO.read(getClass().getResource("/catfish.png"));
+            starfishImage = ImageIO.read(getClass().getResource("/starfish.png"));
+            pufferfishImage = ImageIO.read(getClass().getResource("/pufferfish.png"));
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
 
         chooseCat();
 
@@ -404,62 +426,63 @@ public class FishGame extends JFrame implements KeyListener {
     }
 
     private void drawObject(Graphics g, GameObject obj) {
-        int x = obj.x, y = obj.y, s = obj.size;
+        int x = obj.x;
+        int y = obj.y;
+        int s = obj.size;
+
         switch (obj.type) {
 
             case "shark":
-                g.setColor(new Color(110, 110, 130));
-                g.fillOval(x, y + s/4, s, s/2);
+                if (sharkImage != null)
+                    g.drawImage(sharkImage, x, y, s, s, null);
                 break;
 
             case "trout":
-                g.setColor(new Color(70, 130, 200));
-                g.fillOval(x, y, s, s*2/3);
+                if (troutImage != null)
+                    g.drawImage(troutImage, x, y, s, s, null);
                 break;
 
             case "goldfish":
-                g.setColor(new Color(255, 160, 0));
-                g.fillOval(x, y, s, s);
+                if (goldfishImage != null)
+                    g.drawImage(goldfishImage, x, y, s, s, null);
                 break;
 
             case "jellyfish":
-                g.setColor(new Color(220, 100, 220, 180));
-                g.fillArc(x, y, s, s, 0, 180);
+                if (jellyfishImage != null)
+                    g.drawImage(jellyfishImage, x, y, s, s, null);
                 break;
 
             case "catfish":
-                g.setColor(new Color(120, 80, 40));
-                g.fillOval(x, y, s, s*2/3);
+                if (catfishImage != null)
+                    g.drawImage(catfishImage, x, y, s, s, null);
                 break;
 
             case "starfish":
-                g.setColor(new Color(255, 80, 60));
-                g.fillOval(x, y, s, s);
+                if (starfishImage != null)
+                    g.drawImage(starfishImage, x, y, s, s, null);
                 break;
 
             case "pufferfish":
-                g.setColor(Color.MAGENTA);
-                g.fillOval(x, y, s, s);
+                if (pufferfishImage != null)
+                    g.drawImage(pufferfishImage, x, y, s, s, null);
                 break;
 
             case "rock":
-                g.setColor(new Color(100, 100, 100));
-                g.fillOval(x, y+s/4, s, s*3/4);
+                if (rockImage != null)
+                    g.drawImage(rockImage, x, y, s, s, null);
                 break;
 
             case "trash":
-                g.setColor(new Color(160, 160, 90));
-                g.fillRect(x+2, y+s/5, s-4, s*4/5);
-
+                if (sodacanImage != null)
+                    g.drawImage(sodacanImage, x, y, s, s, null);
                 break;
 
             case "powerup":
-                g.setColor(new Color(50, 220, 50));
+                g.setColor(Color.GREEN);
                 g.fillOval(x, y, s, s);
                 break;
         }
     }
-
 
     private void update() {
 
@@ -524,8 +547,8 @@ public class FishGame extends JFrame implements KeyListener {
 
 
         for (int i = 0; i < objects.size(); i++) {
-            objects.get(i).y -= currentObstacleSpeed;
-            if (objects.get(i).y + objects.get(i).size < DOCK_Y + 50) {
+            objects.get(i).x += objects.get(i).dx;
+            if (objects.get(i).x < -50 || objects.get(i).x > WIDTH + 50) {
                 objects.remove(i--);
             }
         }
@@ -533,23 +556,48 @@ public class FishGame extends JFrame implements KeyListener {
 
         if (Math.random() < fishSpawnRate) {
             String t = randomFishType();
-            objects.add(new GameObject((int)(Math.random()*(WIDTH-40)), HEIGHT, t, sizeForType(t)));
+
+            boolean fromLeft = Math.random() < 0.5;
+
+            int x = fromLeft ? -40 : WIDTH;
+            int y = DOCK_Y + (int) (Math.random() * (HEIGHT - DOCK_Y - 50));
+            int dx = fromLeft ? currentObstacleSpeed : -currentObstacleSpeed;
+
+            objects.add(new GameObject(x, y, t, sizeForType(t), dx));
         }
 
-
         if (Math.random() < puffSpawnRate) {
-            objects.add(new GameObject((int)(Math.random()*(WIDTH-40)), HEIGHT, "pufferfish", sizeForType("pufferfish")));
+            boolean fromLeft = Math.random() < 0.5;
+
+            int x = fromLeft ? -40 : WIDTH;
+            int y = DOCK_Y + (int)(Math.random() * (HEIGHT - DOCK_Y - 50));
+            int dx = fromLeft ? currentObstacleSpeed : -currentObstacleSpeed;
+
+            objects.add(new GameObject(x, y, "pufferfish", sizeForType("pufferfish"), dx));
         }
 
 
         if (Math.random() < obstacleSpawnRate) {
             String t = randomObstacleType();
-            objects.add(new GameObject((int)(Math.random()*(WIDTH-40)), HEIGHT, t, sizeForType(t)));
+
+            boolean fromLeft = Math.random() < 0.5;
+
+            int x = fromLeft ? -40 : WIDTH;
+            int y = DOCK_Y + (int)(Math.random() * (HEIGHT - DOCK_Y - 50));
+            int dx = fromLeft ? currentObstacleSpeed : -currentObstacleSpeed;
+
+            objects.add(new GameObject(x, y, t, sizeForType(t), dx));
         }
 
 
         if (Math.random() < 0.005) {
-            objects.add(new GameObject((int)(Math.random()*(WIDTH-30)), HEIGHT, "powerup", 20));
+            boolean fromLeft = Math.random() < 0.5;
+
+            int x = fromLeft ? -30 : WIDTH;
+            int y = DOCK_Y + (int)(Math.random() * (HEIGHT - DOCK_Y - 50));
+            int dx = fromLeft ? 2 : -2; // slower so it's easier to catch
+
+            objects.add(new GameObject(x, y, "powerup", 20, dx));
         }
 
 
@@ -628,3 +676,4 @@ public class FishGame extends JFrame implements KeyListener {
         SwingUtilities.invokeLater(() -> new FishGame().setVisible(true));
     }
 }
+
