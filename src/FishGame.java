@@ -61,7 +61,7 @@ public class FishGame extends JFrame implements KeyListener {
     private void createBubbles() {
         for (int i = 0; i < 50; i++) {
             int x = (int) (Math.random() * WIDTH);
-            int y = (int) (Math.random() * HEIGHT);
+            int y = DOCK_Y + (int) (Math.random() * (HEIGHT - DOCK_Y));
             int size = 10 + (int) (Math.random() * 20);
 
             bubbles.add(new int[]{x, y, size});
@@ -71,7 +71,8 @@ public class FishGame extends JFrame implements KeyListener {
     private void moveBubbles() {
         for (int[] bubble : bubbles) {
             bubble[1] -= 1;
-            if (bubble[1] < 0) {
+
+            if (bubble[1] < DOCK_Y) {
                 bubble[1] = HEIGHT;
                 bubble[0] = (int) (Math.random() * WIDTH);
             }
