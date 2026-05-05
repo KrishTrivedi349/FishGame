@@ -119,8 +119,11 @@ public class FishGame extends JFrame implements KeyListener {
             yodaImage = ImageIO.read(new File("src/yoda.png"));
             exploreImage = ImageIO.read(new File("src/explore.png"));
             alphaImage = ImageIO.read(new File("src/alpha.png"));
-            coralReefImage = ImageIO.read(new File("src/coral.png"));
-            seaweedImage = ImageIO.read(new File("src/seaweed.png"));
+            coralReefImage = ImageIO.read(new File("/coral.png"));
+            seaweedImage = ImageIO.read(new File("/seaweed.png"));
+
+            System.out.println("Coral: " + coralReefImage);
+            System.out.println("Seaweed: " + seaweedImage);
 
         } catch (IOException ex) {
             ex.printStackTrace();
