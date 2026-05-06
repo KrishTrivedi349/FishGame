@@ -63,6 +63,7 @@ public class FishGame extends JFrame implements KeyListener {
     private BufferedImage sodacanImage;
     private BufferedImage sharkImage, troutImage, goldfishImage, jellyfishImage, catfishImage, starfishImage, pufferfishImage;
     private BufferedImage powerupImage;
+    private BufferedImage heartImage;
 
     private boolean shieldActive = false;
     private long shieldStartTime;
@@ -252,6 +253,8 @@ public class FishGame extends JFrame implements KeyListener {
             pufferfishImage = ImageIO.read(getClass().getResource("/pufferfish.png"));
 
             powerupImage = ImageIO.read(getClass().getResource("/powerup.png"));
+            heartImage = ImageIO.read(getClass().getResource("/heart.png"));
+
 
         } catch (IOException e) {
             e.printStackTrace();
@@ -368,8 +371,15 @@ public class FishGame extends JFrame implements KeyListener {
 
 
         for(int i = 0; i < lives; i++){
-            g.setColor(Color.PINK);
-            g.fillOval(10 + (i * 30),50,15,15);
+            int x = 10 + (i * 30);
+            int y = 50;
+
+            if (heartImage != null) {
+                g.drawImage(heartImage, x, y, 40, 40, null);
+            } else {
+                g.setColor(Color.PINK);
+                g.fillOval(x, y, 15, 15);
+            }
         }
 
         if (isShieldActive()) {
@@ -471,13 +481,27 @@ public class FishGame extends JFrame implements KeyListener {
                 break;
 
             case "rock":
-                if (rockImage != null)
-                    g.drawImage(rockImage, x, y, s, s, null);
+                if (rockImage != null) {
+                    int w = rockImage.getWidth();
+                    int h = rockImage.getHeight();
+
+                    int newW = s;
+                    int newH = (int)((double)h / w * s);
+
+                    g.drawImage(rockImage, x, y, 30, 30, null);
+                }
                 break;
 
             case "trash":
-                if (sodacanImage != null)
-                    g.drawImage(sodacanImage, x, y, s, s, null);
+                if (sodacanImage != null) {
+                    int w = sodacanImage.getWidth();
+                    int h = sodacanImage.getHeight();
+
+                    int newW = s;
+                    int newH = (int)((double)h / w * s);
+
+                    g.drawImage(sodacanImage, x, y, 30, 30, null);
+                }
                 break;
 
             case "powerup":
@@ -737,4 +761,5 @@ public class FishGame extends JFrame implements KeyListener {
         SwingUtilities.invokeLater(() -> new FishGame().setVisible(true));
     }
 }
+
 
