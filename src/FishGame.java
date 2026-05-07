@@ -77,6 +77,7 @@ public class FishGame extends JFrame implements KeyListener {
         int x, y, size;
         int dx;
         String type;
+        int frame;
 
         GameObject(int x, int y, String type, int size, int dx) {
             this.x = x;
@@ -84,6 +85,7 @@ public class FishGame extends JFrame implements KeyListener {
             this.type = type;
             this.size = size;
             this.dx = dx;
+            this.frame = (int)(Math.random() * 4);
         }
     }
 
@@ -438,6 +440,8 @@ public class FishGame extends JFrame implements KeyListener {
         }
     }
 
+
+
     private void drawObject(Graphics g, GameObject obj) {
         int x = obj.x;
         int y = obj.y;
@@ -482,25 +486,35 @@ public class FishGame extends JFrame implements KeyListener {
 
             case "rock":
                 if (rockImage != null) {
-                    int w = rockImage.getWidth();
-                    int h = rockImage.getHeight();
+                    int frameWidth = rockImage.getWidth() / 4;
+                    int frameHeight = rockImage.getHeight();
 
-                    int newW = s;
-                    int newH = (int)((double)h / w * s);
+                    int sx1 = obj.frame * frameWidth;
+                    int sx2 = sx1 + frameWidth;
 
-                    g.drawImage(rockImage, x, y, 30, 30, null);
+                    g.drawImage(
+                            rockImage,
+                            x, y, x + s, y + s,   // screen size
+                            sx1, 0, sx2, frameHeight, // crop area
+                            null
+                    );
                 }
                 break;
 
             case "trash":
                 if (sodacanImage != null) {
-                    int w = sodacanImage.getWidth();
-                    int h = sodacanImage.getHeight();
+                    int frameWidth = sodacanImage.getWidth() / 4;
+                    int frameHeight = sodacanImage.getHeight();
 
-                    int newW = s;
-                    int newH = (int)((double)h / w * s);
+                    int sx1 = obj.frame * frameWidth;
+                    int sx2 = sx1 + frameWidth;
 
-                    g.drawImage(sodacanImage, x, y, 30, 30, null);
+                    g.drawImage(
+                            sodacanImage,
+                            x, y, x + s, y + s,
+                            sx1, 0, sx2, frameHeight,
+                            null
+                    );
                 }
                 break;
 
