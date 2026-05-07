@@ -676,12 +676,12 @@ public class FishGame extends JFrame implements KeyListener {
             URL soundUrl = getClass().getResource(filename);
 
             if (soundUrl == null) {
-                System.out.println("⚠️ Sound file not found in classpath: " + filename);
+                System.out.println(" Sound file not found in classpath: " + filename);
 
 
                 File soundFile = new File(filename);
                 if (!soundFile.exists()) {
-                    System.out.println("⚠️ Sound file not found in file system: " + filename);
+                    System.out.println(" Sound file not found in file system: " + filename);
                     return;
                 }
                 soundUrl = soundFile.toURI().toURL();
@@ -722,7 +722,10 @@ public class FishGame extends JFrame implements KeyListener {
                     }
                 }
             });
+            System.out.println("Playing sound: " + filename);
         } catch (Exception e) {
+            System.out.println("Failed to play sound: " + filename);
+            e.printStackTrace();
         }
     }
 
